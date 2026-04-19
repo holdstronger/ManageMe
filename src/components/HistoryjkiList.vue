@@ -4,6 +4,7 @@ import type { Historyjka, StanHistoryjki } from '../types/historyjka'
 import { historyjkiApi } from '../api/historyjkiApi'
 import { currentUserService } from '../services/currentUserService'
 import HistoryjkaForm from './HistoryjkaForm.vue'
+import TasksBoard from './TasksBoard.vue'
 
 const props = defineProps<{
   projectId: string
@@ -224,6 +225,13 @@ function priorytetLabel(p: string) {
       v-model="showForm"
       :historyjka="editingHistoryjka"
       @submit="handleSubmit"
+    />
+
+    <TasksBoard
+      v-if="projectId"
+      :project-id="projectId"
+      :historyjki="historyjki"
+      @refresh-historyjki="loadHistoryjki"
     />
   </div>
 </template>

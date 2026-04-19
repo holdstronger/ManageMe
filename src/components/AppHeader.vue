@@ -24,6 +24,7 @@ const activeProject = computed(() => {
 })
 
 const userFullName = currentUserService.fullName
+const userRole = currentUserService.user.rola
 
 async function toggleDropdown() {
   if (!showProjectsDropdown.value) {
@@ -94,7 +95,7 @@ watch(showProjectsDropdown, async (open) => {
 
     <div class="user">
       <button class="link-btn" @click="emit('manage-projects')">Projekty</button>
-      <span class="user-name">{{ userFullName }}</span>
+      <span class="user-name">{{ userFullName }} ({{ userRole }})</span>
     </div>
   </header>
 </template>

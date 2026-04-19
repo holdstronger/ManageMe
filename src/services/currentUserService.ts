@@ -1,9 +1,10 @@
 import type { User } from '../types/user'
 
 const MOCK_USER: User = {
-  id: 'mock-user-filip',
+  id: 'user-admin-filip',
   imię: 'Filip',
   nazwisko: 'Wiśniewski',
+  rola: 'admin',
 }
 
 /**
