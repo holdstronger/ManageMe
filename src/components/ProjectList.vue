@@ -57,31 +57,35 @@ async function remove(project: Project) {
 </script>
 
 <template>
-  <div class="project-list">
-    <header class="header">
-      <h1>ManageMe</h1>
-      <p class="subtitle">Centrum projektów</p>
+  <div class="mx-auto" style="max-width: 900px">
+    <header class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-4">
+      <div>
+        <h2 class="mb-1">Projekty</h2>
+        <p class="text-body-secondary mb-0">Centrum projektów</p>
+      </div>
       <button class="btn btn-primary" @click="openCreate">+ Dodaj projekt</button>
     </header>
 
-    <div v-if="loading" class="loading">Ładowanie…</div>
+    <div v-if="loading" class="alert alert-secondary">Ładowanie...</div>
 
-    <div v-else-if="projects.length === 0" class="empty">
-      Brak projektów. Kliknij „Dodaj projekt”, aby utworzyć pierwszy.
+    <div v-else-if="projects.length === 0" class="alert alert-light border">
+      Brak projektów. Kliknij "Dodaj projekt", aby utworzyć pierwszy.
     </div>
 
-    <ul v-else class="cards">
-      <li v-for="p in projects" :key="p.id" class="card">
-        <div class="card-body">
-          <h3 class="card-title">{{ p.nazwa }}</h3>
-          <p v-if="p.opis" class="card-desc">{{ p.opis }}</p>
+    <div v-else class="vstack gap-3">
+      <div v-for="p in projects" :key="p.id" class="card shadow-sm">
+        <div class="card-body d-flex justify-content-between gap-3">
+          <div>
+            <h5 class="card-title mb-1">{{ p.nazwa }}</h5>
+            <p v-if="p.opis" class="card-text text-body-secondary">{{ p.opis }}</p>
+          </div>
+          <div class="btn-group">
+            <button class="btn btn-outline-secondary" title="Edytuj" @click="openEdit(p)">Edytuj</button>
+            <button class="btn btn-outline-danger" title="Usuń" @click="remove(p)">Usuń</button>
+          </div>
         </div>
-        <div class="card-actions">
-          <button class="btn btn-icon" title="Edytuj" @click="openEdit(p)">✎</button>
-          <button class="btn btn-icon btn-danger" title="Usuń" @click="remove(p)">✕</button>
-        </div>
-      </li>
-    </ul>
+      </div>
+    </div>
 
     <ProjectForm
       v-model="showForm"
@@ -90,104 +94,3 @@ async function remove(project: Project) {
     />
   </div>
 </template>
-
-<style scoped>
-.project-list {
-  max-width: 720px;
-  margin: 0 auto;
-  padding: 32px 24px;
-}
-
-.header {
-  margin-bottom: 32px;
-}
-
-.header h1 {
-  margin: 0 0 8px;
-  font-size: 28px;
-}
-
-.subtitle {
-  color: var(--text);
-  margin: 0 0 20px;
-}
-
-.loading,
-.empty {
-  color: var(--text);
-  padding: 40px;
-  text-align: center;
-}
-
-.cards {
-  list-style: none;
-  padding: 0;
-  margin: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-}
-
-.card {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 16px;
-  padding: 20px;
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  background: var(--code-bg);
-}
-
-.card-body {
-  flex: 1;
-  min-width: 0;
-}
-
-.card-title {
-  margin: 0 0 8px;
-  font-size: 18px;
-}
-
-.card-desc {
-  margin: 0;
-  font-size: 15px;
-  color: var(--text);
-  white-space: pre-wrap;
-}
-
-.card-actions {
-  display: flex;
-  gap: 8px;
-}
-
-.btn {
-  padding: 10px 20px;
-  border-radius: 8px;
-  font: inherit;
-  font-weight: 500;
-  cursor: pointer;
-  border: none;
-}
-
-.btn-primary {
-  background: var(--accent);
-  color: white;
-}
-
-.btn-icon {
-  padding: 8px 12px;
-  background: transparent;
-  color: var(--text);
-}
-
-.btn-icon:hover {
-  background: var(--accent-bg);
-  color: var(--accent);
-}
-
-.btn-danger:hover {
-  background: rgba(220, 38, 38, 0.15);
-  color: #dc2626;
-}
-</style>
