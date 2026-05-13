@@ -25,36 +25,31 @@ const emit = defineEmits<{
   ): void
 }>()
 
-const nazwa = ref('')
-const opis = ref('')
-const priorytet = ref<Priorytet>('średni')
-const historyjkaId = ref('')
-const przewidywanyCzasGodziny = ref(1)
-const zrealizowaneRoboczogodziny = ref(0)
-const dialogRef = ref<HTMLDialogElement | null>(null)
+const nazwaField = ref('')
+const opisField = ref('')
+const priorytetField = ref<Priorytet>('średni')
+const historyjkaIdField = ref('')
+const przewidywanyCzasGodzinyField = ref(1)
+const zrealizowaneRoboczogodzinyField = ref(0)
 
 watch(
   () => props.modelValue,
   (open) => {
-    if (open) {
-      if (props.task) {
-        nazwa.value = props.task.nazwa
-        opis.value = props.task.opis
-        priorytet.value = props.task.priorytet
-        historyjkaId.value = props.task.historyjkaId
-        przewidywanyCzasGodziny.value = props.task.przewidywanyCzasGodziny
-        zrealizowaneRoboczogodziny.value = props.task.zrealizowaneRoboczogodziny
-      } else {
-        nazwa.value = ''
-        opis.value = ''
-        priorytet.value = 'średni'
-        historyjkaId.value = props.historyjki[0]?.id ?? ''
-        przewidywanyCzasGodziny.value = 1
-        zrealizowaneRoboczogodziny.value = 0
-      }
-      dialogRef.value?.showModal()
+    if (!open) return
+    if (props.task) {
+      nazwaField.value = props.task.nazwa
+      opisField.value = props.task.opis
+      priorytetField.value = props.task.priorytet
+      historyjkaIdField.value = props.task.historyjkaId
+      przewidywanyCzasGodzinyField.value = props.task.przewidywanyCzasGodziny
+      zrealizowaneRoboczogodzinyField.value = props.task.zrealizowaneRoboczogodziny
     } else {
-      dialogRef.value?.close()
+      nazwaField.value = ''
+      opisField.value = ''
+      priorytetField.value = 'średni'
+      historyjkaIdField.value = props.historyjki[0]?.id ?? ''
+      przewidywanyCzasGodzinyField.value = 1
+      zrealizowaneRoboczogodzinyField.value = 0
     }
   },
   { immediate: true }
@@ -65,15 +60,15 @@ function close() {
 }
 
 function handleSubmit() {
-  if (!nazwa.value.trim() || !historyjkaId.value) return
+  if (!nazwaField.value.trim() || !historyjkaIdField.value) return
 
   emit('submit', {
-    nazwa: nazwa.value.trim(),
-    opis: opis.value.trim(),
-    priorytet: priorytet.value,
-    historyjkaId: historyjkaId.value,
-    przewidywanyCzasGodziny: Math.max(1, przewidywanyCzasGodziny.value),
-    zrealizowaneRoboczogodziny: Math.max(0, zrealizowaneRoboczogodziny.value),
+    nazwa: nazwaField.value.trim(),
+    opis: opisField.value.trim(),
+    priorytet: priorytetField.value,
+    historyjkaId: historyjkaIdField.value,
+    przewidywanyCzasGodziny: Math.max(1, przewidywanyCzasGodzinyField.value),
+    zrealizowaneRoboczogodziny: Math.max(0, zrealizowaneRoboczogodzinyField.value),
   })
   close()
 }
@@ -82,67 +77,148 @@ const isEditing = () => !!props.task
 </script>
 
 <template>
-  <dialog ref="dialogRef" class="modal" @cancel="close" @close="emit('update:modelValue', false)">
-    <div class="modal-content">
-      <h2>{{ isEditing() ? 'Edytuj zadanie' : 'Nowe zadanie' }}</h2>
-      <form @submit.prevent="handleSubmit">
-        <div class="field">
-          <label for="t-nazwa">Nazwa</label>
-          <input id="t-nazwa" v-model="nazwa" type="text" required />
-        </div>
-        <div class="field">
-          <label for="t-opis">Opis</label>
-          <textarea id="t-opis" v-model="opis" rows="3" />
-        </div>
-        <div class="grid">
+  <Teleport to="body">
+    <div v-if="modelValue" class="mm-overlay" role="presentation" @click.self="close">
+      <div
+        class="mm-panel"
+        role="dialog"
+        aria-modal="true"
+        tabindex="-1"
+        @click.stop
+        @keydown.esc.prevent="close"
+      >
+        <h2>{{ isEditing() ? 'Edytuj zadanie' : 'Nowe zadanie' }}</h2>
+        <form @submit.prevent="handleSubmit">
           <div class="field">
-            <label for="t-priorytet">Priorytet</label>
-            <select id="t-priorytet" v-model="priorytet">
-              <option value="niski">Niski</option>
-              <option value="średni">Średni</option>
-              <option value="wysoki">Wysoki</option>
-            </select>
+            <label for="tf-nazwa">Nazwa</label>
+            <input id="tf-nazwa" v-model="nazwaField" type="text" required />
           </div>
           <div class="field">
-            <label for="t-story">Historyjka</label>
-            <select id="t-story" v-model="historyjkaId" required>
-              <option v-for="h in historyjki" :key="h.id" :value="h.id">
-                {{ h.nazwa }}
-              </option>
-            </select>
+            <label for="tf-opis">Opis</label>
+            <textarea id="tf-opis" v-model="opisField" rows="3" />
           </div>
-        </div>
-        <div class="grid">
-          <div class="field">
-            <label for="t-est">Przewidywany czas [h]</label>
-            <input id="t-est" v-model.number="przewidywanyCzasGodziny" type="number" min="1" step="1" />
+          <div class="grid">
+            <div class="field">
+              <label for="tf-priorytet">Priorytet</label>
+              <select id="tf-priorytet" v-model="priorytetField">
+                <option value="niski">Niski</option>
+                <option value="średni">Średni</option>
+                <option value="wysoki">Wysoki</option>
+              </select>
+            </div>
+            <div class="field">
+              <label for="tf-story">Historyjka</label>
+              <select id="tf-story" v-model="historyjkaIdField" required>
+                <option v-for="h in historyjki" :key="h.id" :value="h.id">
+                  {{ h.nazwa }}
+                </option>
+              </select>
+            </div>
           </div>
-          <div class="field">
-            <label for="t-work">Zrealizowane roboczogodziny</label>
-            <input id="t-work" v-model.number="zrealizowaneRoboczogodziny" type="number" min="0" step="1" />
+          <div class="grid">
+            <div class="field">
+              <label for="tf-est">Przewidywany czas [h]</label>
+              <input id="tf-est" v-model.number="przewidywanyCzasGodzinyField" type="number" min="1" step="1" />
+            </div>
+            <div class="field">
+              <label for="tf-work">Zrealizowane roboczogodziny</label>
+              <input id="tf-work" v-model.number="zrealizowaneRoboczogodzinyField" type="number" min="0" step="1" />
+            </div>
           </div>
-        </div>
-        <div class="actions">
-          <button type="button" class="btn btn-secondary" @click="close">Anuluj</button>
-          <button type="submit" class="btn btn-primary">
-            {{ isEditing() ? 'Zapisz' : 'Dodaj' }}
-          </button>
-        </div>
-      </form>
+          <div class="actions">
+            <button type="button" class="btn btn-secondary" @click="close">Anuluj</button>
+            <button type="submit" class="btn btn-primary">
+              {{ isEditing() ? 'Zapisz' : 'Dodaj' }}
+            </button>
+          </div>
+        </form>
+      </div>
     </div>
-  </dialog>
+  </Teleport>
 </template>
 
 <style scoped>
-.modal { border: none; border-radius: 12px; padding: 0; max-width: 560px; width: 90vw; box-shadow: var(--shadow); }
-.modal::backdrop { background: rgba(0, 0, 0, 0.4); }
-.modal-content { padding: 24px; }
-.field { margin-bottom: 12px; text-align: left; }
-.field label { display: block; font-size: 14px; margin-bottom: 6px; color: var(--text-h); }
-.field input, .field textarea, .field select { width: 100%; box-sizing: border-box; padding: 10px; border-radius: 8px; border: 1px solid var(--border); background: var(--code-bg); color: var(--text-h); font: inherit; }
-.grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-.actions { margin-top: 16px; display: flex; justify-content: flex-end; gap: 10px; }
-.btn { padding: 10px 18px; border: none; border-radius: 8px; font: inherit; cursor: pointer; }
-.btn-primary { background: var(--accent); color: white; }
-.btn-secondary { background: var(--code-bg); color: var(--text-h); }
+.mm-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 2000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  background: rgba(0, 0, 0, 0.45);
+}
+
+.mm-panel {
+  width: 100%;
+  max-width: 560px;
+  max-height: min(90vh, 720px);
+  overflow: auto;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 24px;
+  box-shadow: var(--shadow);
+}
+
+.mm-panel h2 {
+  margin: 0 0 16px;
+  font-size: 18px;
+}
+
+.field {
+  margin-bottom: 12px;
+  text-align: left;
+}
+
+.field label {
+  display: block;
+  font-size: 14px;
+  margin-bottom: 6px;
+  color: var(--text-h);
+}
+
+.field input,
+.field textarea,
+.field select {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 10px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--code-bg);
+  color: var(--text-h);
+  font: inherit;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.actions {
+  margin-top: 16px;
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.btn {
+  padding: 10px 18px;
+  border: none;
+  border-radius: 8px;
+  font: inherit;
+  cursor: pointer;
+}
+
+.btn-primary {
+  background: var(--accent);
+  color: white;
+}
+
+.btn-secondary {
+  background: var(--code-bg);
+  color: var(--text-h);
+}
 </style>

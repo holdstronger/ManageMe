@@ -12,24 +12,19 @@ const emit = defineEmits<{
   (e: 'submit', data: { nazwa: string; opis: string }): void
 }>()
 
-const nazwa = ref('')
-const opis = ref('')
-const dialogRef = ref<HTMLDialogElement | null>(null)
+const nazwaField = ref('')
+const opisField = ref('')
 
 watch(
   () => props.modelValue,
   (open) => {
-    if (open) {
-      if (props.project) {
-        nazwa.value = props.project.nazwa
-        opis.value = props.project.opis
-      } else {
-        nazwa.value = ''
-        opis.value = ''
-      }
-      dialogRef.value?.showModal()
+    if (!open) return
+    if (props.project) {
+      nazwaField.value = props.project.nazwa
+      opisField.value = props.project.opis
     } else {
-      dialogRef.value?.close()
+      nazwaField.value = ''
+      opisField.value = ''
     }
   },
   { immediate: true }
@@ -38,8 +33,8 @@ watch(
 const isEditing = () => !!props.project
 
 function handleSubmit() {
-  if (!nazwa.value.trim()) return
-  emit('submit', { nazwa: nazwa.value.trim(), opis: opis.value.trim() })
+  if (!nazwaField.value.trim()) return
+  emit('submit', { nazwa: nazwaField.value.trim(), opis: opisField.value.trim() })
   emit('update:modelValue', false)
 }
 
@@ -49,67 +44,75 @@ function close() {
 </script>
 
 <template>
-  <dialog ref="dialogRef" class="modal" @cancel="close" @close="emit('update:modelValue', false)">
-    <div class="modal-content">
-      <h2>{{ isEditing() ? 'Edytuj projekt' : 'Nowy projekt' }}</h2>
-      <form @submit.prevent="handleSubmit">
-        <div class="field">
-          <label for="nazwa">Nazwa</label>
-          <input
-            id="nazwa"
-            v-model="nazwa"
-            type="text"
-            required
-            placeholder="Nazwa projektu"
-            autocomplete="off"
-          />
-        </div>
-        <div class="field">
-          <label for="opis">Opis</label>
-          <textarea
-            id="opis"
-            v-model="opis"
-            rows="4"
-            placeholder="Opis projektu"
-          />
-        </div>
-        <div class="actions">
-          <button type="button" class="btn btn-secondary" @click="close">Anuluj</button>
-          <button type="submit" class="btn btn-primary">
-            {{ isEditing() ? 'Zapisz' : 'Dodaj' }}
-          </button>
-        </div>
-      </form>
+  <Teleport to="body">
+    <div
+      v-if="modelValue"
+      class="mm-overlay"
+      role="presentation"
+      @click.self="close"
+    >
+      <div
+        class="mm-panel"
+        role="dialog"
+        aria-modal="true"
+        tabindex="-1"
+        @click.stop
+        @keydown.esc.prevent="close"
+      >
+        <h2>{{ isEditing() ? 'Edytuj projekt' : 'Nowy projekt' }}</h2>
+        <form @submit.prevent="handleSubmit">
+          <div class="field">
+            <label for="pf-nazwa">Nazwa</label>
+            <input
+              id="pf-nazwa"
+              v-model="nazwaField"
+              type="text"
+              required
+              placeholder="Nazwa projektu"
+              autocomplete="off"
+            />
+          </div>
+          <div class="field">
+            <label for="pf-opis">Opis</label>
+            <textarea id="pf-opis" v-model="opisField" rows="4" placeholder="Opis projektu" />
+          </div>
+          <div class="actions">
+            <button type="button" class="btn btn-secondary" @click="close">Anuluj</button>
+            <button type="submit" class="btn btn-primary">
+              {{ isEditing() ? 'Zapisz' : 'Dodaj' }}
+            </button>
+          </div>
+        </form>
+      </div>
     </div>
-  </dialog>
+  </Teleport>
 </template>
 
 <style scoped>
-.modal {
-  border: none;
-  border-radius: 12px;
-  padding: 0;
+.mm-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 2000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  background: rgba(0, 0, 0, 0.45);
+}
+
+.mm-panel {
+  width: 100%;
   max-width: 420px;
-  width: 90vw;
-  box-shadow: var(--shadow);
-}
-
-.modal::backdrop {
-  background: rgba(0, 0, 0, 0.4);
-}
-
-.modal-content {
-  position: relative;
+  max-height: min(90vh, 640px);
+  overflow: auto;
   background: var(--bg);
   border: 1px solid var(--border);
   border-radius: 12px;
   padding: 24px;
-  max-width: 420px;
-  width: 90%;
   box-shadow: var(--shadow);
 }
 
-.modal-content h2 {
+.mm-panel h2 {
   margin: 0 0 20px;
   font-size: 20px;
 }

@@ -6,6 +6,13 @@ import type { Task } from '../types/task'
 import type { User } from '../types/user'
 import { tasksApi } from '../api/tasksApi'
 import { usersApi } from '../api/usersApi'
+import {
+  notifyNewTaskInStory,
+  notifyTaskAssigned,
+  notifyTaskRemovedFromStory,
+  notifyTaskStatusDoing,
+  notifyTaskStatusDone,
+} from '../services/appNotifications'
 
 const props = defineProps<{
   projectId: string
@@ -96,33 +103,52 @@ async function saveTask(data: {
       projektId: props.projectId,
     })
     tasks.value.push(created)
+    const story = storyMap.value.get(created.historyjkaId)
+    if (story) {
+      notifyNewTaskInStory(created, story, story.właściciel)
+    }
   }
 }
 
 async function removeTask(task: Task) {
   if (!confirm(`Usunąć zadanie "${task.nazwa}"?`)) return
+  const story = storyMap.value.get(task.historyjkaId)
+  const ownerId = story?.właściciel
   const ok = await tasksApi.delete(task.id)
   if (!ok) return
   tasks.value = tasks.value.filter((t) => t.id !== task.id)
   if (selectedTask.value?.id === task.id) closeDetails()
+  if (ownerId) {
+    notifyTaskRemovedFromStory(task.nazwa, story, ownerId)
+  }
   emit('refresh-historyjki')
 }
 
 async function assignTask() {
   if (!selectedTask.value || !assigneeId.value) return
+  const beforeStan = selectedTask.value.stan
   const updated = await tasksApi.assignUser(selectedTask.value.id, assigneeId.value)
   if (!updated) return
   replaceTask(updated)
   selectedTask.value = updated
+  const story = storyMap.value.get(updated.historyjkaId)
+  notifyTaskAssigned(updated, story, assigneeId.value)
+  if (beforeStan === 'todo' && updated.stan === 'doing' && story?.właściciel) {
+    notifyTaskStatusDoing(updated, story, story.właściciel)
+  }
   emit('refresh-historyjki')
 }
 
 async function markDone() {
   if (!selectedTask.value) return
+  const story = storyMap.value.get(selectedTask.value.historyjkaId)
   const updated = await tasksApi.markDone(selectedTask.value.id)
   if (!updated) return
   replaceTask(updated)
   selectedTask.value = updated
+  if (story?.właściciel) {
+    notifyTaskStatusDone(updated, story, story.właściciel)
+  }
   emit('refresh-historyjki')
 }
 
@@ -201,52 +227,64 @@ function userLabel(userId: string | null) {
 
     <TaskForm v-model="showForm" :historyjki="historyjki" :task="editingTask" @submit="saveTask" />
 
-    <dialog
-      :open="!!selectedTask"
-      class="details"
-      @close="closeDetails"
-      @cancel.prevent="closeDetails"
-    >
-      <div v-if="selectedTask" class="details-content">
-        <div class="details-header">
-          <h3>{{ selectedTask.nazwa }}</h3>
-          <button class="btn-icon" @click="closeDetails">✕</button>
-        </div>
-        <p class="muted">{{ selectedTask.opis || 'Brak opisu' }}</p>
-        <ul class="meta">
-          <li><strong>Stan:</strong> {{ stateLabel(selectedTask.stan) }}</li>
-          <li><strong>Priorytet:</strong> {{ priorityLabel(selectedTask.priorytet) }}</li>
-          <li><strong>Historyjka:</strong> {{ storyMap.get(selectedTask.historyjkaId)?.nazwa ?? 'Brak' }}</li>
-          <li><strong>Data startu:</strong> {{ formatDate(selectedTask.dataStartu) }}</li>
-          <li><strong>Data zakończenia:</strong> {{ formatDate(selectedTask.dataZakończenia) }}</li>
-          <li><strong>Plan [h]:</strong> {{ selectedTask.przewidywanyCzasGodziny }}</li>
-          <li><strong>Zrealizowane [h]:</strong> {{ selectedTask.zrealizowaneRoboczogodziny }}</li>
-          <li><strong>Osoba:</strong> {{ userLabel(selectedTask.odpowiedzialnyUżytkownikId) }}</li>
-        </ul>
-        <div class="actions-row">
-          <select v-model="assigneeId">
-            <option disabled value="">Przypisz osobę</option>
-            <option v-for="user in assignableUsers" :key="user.id" :value="user.id">
-              {{ user.imię }} {{ user.nazwisko }} ({{ user.rola }})
-            </option>
-          </select>
-          <button class="btn btn-secondary" :disabled="!assigneeId" @click="assignTask">
-            Przypisz
-          </button>
-          <button
-            class="btn btn-primary"
-            :disabled="selectedTask.stan === 'done' || !selectedTask.odpowiedzialnyUżytkownikId"
-            @click="markDone"
-          >
-            Oznacz jako done
-          </button>
-        </div>
-        <div class="actions-row">
-          <button class="btn btn-secondary" @click="openEdit(selectedTask)">Edytuj</button>
-          <button class="btn btn-danger" @click="removeTask(selectedTask)">Usuń</button>
+    <Teleport to="body">
+      <div
+        v-if="selectedTask"
+        class="task-details-overlay"
+        role="presentation"
+        @click.self="closeDetails"
+      >
+        <div
+          class="task-details-panel"
+          role="dialog"
+          aria-modal="true"
+          tabindex="-1"
+          @click.stop
+          @keydown.esc.prevent="closeDetails"
+        >
+          <div class="details-content">
+            <div class="details-header">
+              <h3>{{ selectedTask.nazwa }}</h3>
+              <button type="button" class="btn-icon" @click="closeDetails">✕</button>
+            </div>
+            <p class="muted">{{ selectedTask.opis || 'Brak opisu' }}</p>
+            <ul class="meta">
+              <li><strong>Stan:</strong> {{ stateLabel(selectedTask.stan) }}</li>
+              <li><strong>Priorytet:</strong> {{ priorityLabel(selectedTask.priorytet) }}</li>
+              <li><strong>Historyjka:</strong> {{ storyMap.get(selectedTask.historyjkaId)?.nazwa ?? 'Brak' }}</li>
+              <li><strong>Data startu:</strong> {{ formatDate(selectedTask.dataStartu) }}</li>
+              <li><strong>Data zakończenia:</strong> {{ formatDate(selectedTask.dataZakończenia) }}</li>
+              <li><strong>Plan [h]:</strong> {{ selectedTask.przewidywanyCzasGodziny }}</li>
+              <li><strong>Zrealizowane [h]:</strong> {{ selectedTask.zrealizowaneRoboczogodziny }}</li>
+              <li><strong>Osoba:</strong> {{ userLabel(selectedTask.odpowiedzialnyUżytkownikId) }}</li>
+            </ul>
+            <div class="actions-row">
+              <select v-model="assigneeId">
+                <option disabled value="">Przypisz osobę</option>
+                <option v-for="user in assignableUsers" :key="user.id" :value="user.id">
+                  {{ user.imię }} {{ user.nazwisko }} ({{ user.rola }})
+                </option>
+              </select>
+              <button type="button" class="btn btn-secondary" :disabled="!assigneeId" @click="assignTask">
+                Przypisz
+              </button>
+              <button
+                type="button"
+                class="btn btn-primary"
+                :disabled="selectedTask.stan === 'done' || !selectedTask.odpowiedzialnyUżytkownikId"
+                @click="markDone"
+              >
+                Oznacz jako done
+              </button>
+            </div>
+            <div class="actions-row">
+              <button type="button" class="btn btn-secondary" @click="openEdit(selectedTask)">Edytuj</button>
+              <button type="button" class="btn btn-danger" @click="removeTask(selectedTask)">Usuń</button>
+            </div>
+          </div>
         </div>
       </div>
-    </dialog>
+    </Teleport>
   </section>
 </template>
 
@@ -261,8 +299,26 @@ function userLabel(userId: string | null) {
 .card { border: 1px solid var(--border); border-radius: 8px; padding: 10px; background: var(--bg); cursor: pointer; }
 .card strong { display: block; color: var(--text-h); font-size: 14px; margin-bottom: 4px; }
 .card p { font-size: 12px; color: var(--text); }
-.details { border: none; border-radius: 12px; max-width: 620px; width: 92vw; box-shadow: var(--shadow); }
-.details::backdrop { background: rgba(0, 0, 0, 0.45); }
+.task-details-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 2000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  background: rgba(0, 0, 0, 0.45);
+}
+.task-details-panel {
+  border: none;
+  border-radius: 12px;
+  max-width: 620px;
+  width: 92vw;
+  max-height: min(90vh, 720px);
+  overflow: auto;
+  box-shadow: var(--shadow);
+  background: var(--bg);
+}
 .details-content { padding: 20px; text-align: left; }
 .details-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
 .muted { color: var(--text); margin-bottom: 10px; }

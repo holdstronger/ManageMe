@@ -24,30 +24,25 @@ const emit = defineEmits<{
   (e: 'submit', data: { nazwa: string; opis: string; priorytet: Priorytet; stan: StanHistoryjki }): void
 }>()
 
-const nazwa = ref('')
-const opis = ref('')
-const priorytet = ref<Priorytet>('średni')
-const stan = ref<StanHistoryjki>('todo')
-const dialogRef = ref<HTMLDialogElement | null>(null)
+const nazwaField = ref('')
+const opisField = ref('')
+const priorytetField = ref<Priorytet>('średni')
+const stanField = ref<StanHistoryjki>('todo')
 
 watch(
   () => props.modelValue,
   (open) => {
-    if (open) {
-      if (props.historyjka) {
-        nazwa.value = props.historyjka.nazwa
-        opis.value = props.historyjka.opis
-        priorytet.value = props.historyjka.priorytet
-        stan.value = props.historyjka.stan
-      } else {
-        nazwa.value = ''
-        opis.value = ''
-        priorytet.value = 'średni'
-        stan.value = 'todo'
-      }
-      dialogRef.value?.showModal()
+    if (!open) return
+    if (props.historyjka) {
+      nazwaField.value = props.historyjka.nazwa
+      opisField.value = props.historyjka.opis
+      priorytetField.value = props.historyjka.priorytet
+      stanField.value = props.historyjka.stan
     } else {
-      dialogRef.value?.close()
+      nazwaField.value = ''
+      opisField.value = ''
+      priorytetField.value = 'średni'
+      stanField.value = 'todo'
     }
   },
   { immediate: true }
@@ -56,12 +51,12 @@ watch(
 const isEditing = () => !!props.historyjka
 
 function handleSubmit() {
-  if (!nazwa.value.trim()) return
+  if (!nazwaField.value.trim()) return
   emit('submit', {
-    nazwa: nazwa.value.trim(),
-    opis: opis.value.trim(),
-    priorytet: priorytet.value,
-    stan: stan.value,
+    nazwa: nazwaField.value.trim(),
+    opis: opisField.value.trim(),
+    priorytet: priorytetField.value,
+    stan: stanField.value,
   })
   emit('update:modelValue', false)
 }
@@ -72,71 +67,86 @@ function close() {
 </script>
 
 <template>
-  <dialog ref="dialogRef" class="modal" @cancel="close" @close="emit('update:modelValue', false)">
-    <div class="modal-content">
-      <h2>{{ isEditing() ? 'Edytuj historyjkę' : 'Nowa historyjka' }}</h2>
-      <form @submit.prevent="handleSubmit">
-        <div class="field">
-          <label for="h-nazwa">Nazwa</label>
-          <input
-            id="h-nazwa"
-            v-model="nazwa"
-            type="text"
-            required
-            placeholder="Nazwa historyjki"
-            autocomplete="off"
-          />
-        </div>
-        <div class="field">
-          <label for="h-opis">Opis</label>
-          <textarea id="h-opis" v-model="opis" rows="4" placeholder="Opis" />
-        </div>
-        <div class="field">
-          <label for="h-priorytet">Priorytet</label>
-          <select id="h-priorytet" v-model="priorytet">
-            <option v-for="p in PRIORYTETY" :key="p.value" :value="p.value">
-              {{ p.label }}
-            </option>
-          </select>
-        </div>
-        <div class="field">
-          <label for="h-stan">Stan</label>
-          <select id="h-stan" v-model="stan">
-            <option v-for="s in STANY" :key="s.value" :value="s.value">
-              {{ s.label }}
-            </option>
-          </select>
-        </div>
-        <div class="actions">
-          <button type="button" class="btn btn-secondary" @click="close">Anuluj</button>
-          <button type="submit" class="btn btn-primary">
-            {{ isEditing() ? 'Zapisz' : 'Dodaj' }}
-          </button>
-        </div>
-      </form>
+  <Teleport to="body">
+    <div v-if="modelValue" class="mm-overlay" role="presentation" @click.self="close">
+      <div
+        class="mm-panel"
+        role="dialog"
+        aria-modal="true"
+        tabindex="-1"
+        @click.stop
+        @keydown.esc.prevent="close"
+      >
+        <h2>{{ isEditing() ? 'Edytuj historyjkę' : 'Nowa historyjka' }}</h2>
+        <form @submit.prevent="handleSubmit">
+          <div class="field">
+            <label for="hf-nazwa">Nazwa</label>
+            <input
+              id="hf-nazwa"
+              v-model="nazwaField"
+              type="text"
+              required
+              placeholder="Nazwa historyjki"
+              autocomplete="off"
+            />
+          </div>
+          <div class="field">
+            <label for="hf-opis">Opis</label>
+            <textarea id="hf-opis" v-model="opisField" rows="4" placeholder="Opis" />
+          </div>
+          <div class="field">
+            <label for="hf-priorytet">Priorytet</label>
+            <select id="hf-priorytet" v-model="priorytetField">
+              <option v-for="p in PRIORYTETY" :key="p.value" :value="p.value">
+                {{ p.label }}
+              </option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="hf-stan">Stan</label>
+            <select id="hf-stan" v-model="stanField">
+              <option v-for="s in STANY" :key="s.value" :value="s.value">
+                {{ s.label }}
+              </option>
+            </select>
+          </div>
+          <div class="actions">
+            <button type="button" class="btn btn-secondary" @click="close">Anuluj</button>
+            <button type="submit" class="btn btn-primary">
+              {{ isEditing() ? 'Zapisz' : 'Dodaj' }}
+            </button>
+          </div>
+        </form>
+      </div>
     </div>
-  </dialog>
+  </Teleport>
 </template>
 
 <style scoped>
-.modal {
-  border: none;
-  border-radius: 12px;
-  padding: 0;
+.mm-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 2000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  background: rgba(0, 0, 0, 0.45);
+}
+
+.mm-panel {
+  width: 100%;
   max-width: 420px;
-  width: 90vw;
+  max-height: min(90vh, 640px);
+  overflow: auto;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 24px;
   box-shadow: var(--shadow);
 }
 
-.modal::backdrop {
-  background: rgba(0, 0, 0, 0.4);
-}
-
-.modal-content {
-  padding: 24px;
-}
-
-.modal-content h2 {
+.mm-panel h2 {
   margin: 0 0 20px;
   font-size: 20px;
 }

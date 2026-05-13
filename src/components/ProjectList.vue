@@ -3,6 +3,7 @@ import { ref, onMounted } from 'vue'
 import type { Project } from '../types/project'
 import { projectsApi } from '../api/projectsApi'
 import ProjectForm from './ProjectForm.vue'
+import { notifyProjectCreated } from '../services/appNotifications'
 
 const projects = ref<Project[]>([])
 const loading = ref(true)
@@ -41,6 +42,7 @@ async function handleSubmit(data: { nazwa: string; opis: string }) {
     } else {
       const created = await projectsApi.create(data)
       projects.value.push(created)
+      await notifyProjectCreated(created.nazwa)
     }
   } catch (e) {
     console.error('Błąd zapisu:', e)
