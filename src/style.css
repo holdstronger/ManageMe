@@ -1,0 +1,26 @@
+body {
+  margin: 0;
+  min-height: 100vh;
+  background: var(--bs-body-bg);
+  color: var(--bs-body-color);
+}
+
+:root {
+  --text: var(--bs-secondary-color);
+  --text-h: var(--bs-emphasis-color);
+  --bg: var(--bs-body-bg);
+  --border: var(--bs-border-color);
+  --code-bg: var(--bs-tertiary-bg);
+  --accent: var(--bs-primary);
+  --accent-bg: rgba(var(--bs-primary-rgb), 0.12);
+  --shadow: var(--bs-box-shadow);
+}
+
+#app {
+  width: min(1200px, 100%);
+  margin: 0 auto;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  border-inline: 1px solid var(--bs-border-color);
+}
