@@ -33,6 +33,12 @@ const todo = computed(() => historyjki.value.filter((h) => h.stan === 'todo'))
 const doing = computed(() => historyjki.value.filter((h) => h.stan === 'doing'))
 const done = computed(() => historyjki.value.filter((h) => h.stan === 'done'))
 
+const historyjkiSections = computed(() => [
+  { key: 'todo' as const, title: 'Do zrobienia', items: todo.value },
+  { key: 'doing' as const, title: 'W trakcie', items: doing.value },
+  { key: 'done' as const, title: 'Zamknięte', items: done.value },
+])
+
 watch(
   () => props.projectId,
   () => loadHistoryjki(),
@@ -118,35 +124,63 @@ function priorytetLabel(p: string) {
 </script>
 
 <template>
-  <div class="historyjki-list">
-    <header class="header">
-      <h2>Historyjki</h2>
-      <div class="toolbar">
-        <select v-model="filterStan" class="filter-select">
-          <option v-for="s in STANY" :key="s.value" :value="s.value">
-            {{ s.label }}
-          </option>
-        </select>
-        <button class="btn btn-primary" @click="openCreate">+ Nowa historyjka</button>
+  <div class="project-workspace">
+    <section class="workspace-section" aria-labelledby="historyjki-heading">
+      <header class="header">
+        <h2 id="historyjki-heading">Historyjki</h2>
+        <div class="toolbar">
+          <select v-model="filterStan" class="filter-select" aria-label="Filtr historyjek">
+            <option v-for="s in STANY" :key="s.value" :value="s.value">
+              {{ s.label }}
+            </option>
+          </select>
+          <button class="btn btn-primary" @click="openCreate">+ Nowa historyjka</button>
+        </div>
+      </header>
+
+      <div v-if="loading" class="loading">Ładowanie…</div>
+
+      <div v-else-if="!projectId" class="empty">
+        Wybierz projekt w nagłówku, aby zarządzać historyjkami.
       </div>
-    </header>
 
-    <div v-if="loading" class="loading">Ładowanie…</div>
+      <div v-else-if="historyjki.length === 0" class="empty">
+        Brak historyjek. Kliknij „Nowa historyjka”, aby dodać pierwszą.
+      </div>
 
-    <div v-else-if="!projectId" class="empty">
-      Wybierz projekt w nagłówku, aby zarządzać historyjkami.
-    </div>
+      <div v-else-if="filterStan !== 'all' && filteredHistoryjki.length === 0" class="empty">
+        Brak historyjek w wybranym stanie.
+      </div>
 
-    <div v-else-if="filteredHistoryjki.length === 0" class="empty">
-      Brak historyjek. Kliknij „Nowa historyjka”, aby dodać pierwszą.
-    </div>
-
-    <div v-else class="sections">
-      <template v-if="filterStan === 'all'">
-        <section v-if="todo.length" class="section">
-          <h3 class="section-title">Do zrobienia</h3>
+      <div v-else class="sections">
+        <template v-if="filterStan === 'all'">
+          <section v-for="section in historyjkiSections" :key="section.key" class="subsection">
+            <h3 class="section-title">
+              {{ section.title }}
+              <span class="section-count">{{ section.items.length }}</span>
+            </h3>
+            <ul v-if="section.items.length" class="cards">
+              <li v-for="h in section.items" :key="h.id" class="card">
+                <div class="card-body">
+                  <div class="card-meta">
+                    <span class="badge" :class="'priorytet-' + h.priorytet">{{ priorytetLabel(h.priorytet) }}</span>
+                    <span class="date">{{ formatDate(h.dataUtworzenia) }}</span>
+                  </div>
+                  <h4 class="card-title">{{ h.nazwa }}</h4>
+                  <p v-if="h.opis" class="card-desc">{{ h.opis }}</p>
+                </div>
+                <div class="card-actions">
+                  <button class="btn btn-icon" title="Edytuj" @click="openEdit(h)">✎</button>
+                  <button class="btn btn-icon btn-danger" title="Usuń" @click="remove(h)">✕</button>
+                </div>
+              </li>
+            </ul>
+            <p v-else class="section-empty">Brak historyjek w tym stanie.</p>
+          </section>
+        </template>
+        <section v-else class="subsection">
           <ul class="cards">
-            <li v-for="h in todo" :key="h.id" class="card">
+            <li v-for="h in filteredHistoryjki" :key="h.id" class="card">
               <div class="card-body">
                 <div class="card-meta">
                   <span class="badge" :class="'priorytet-' + h.priorytet">{{ priorytetLabel(h.priorytet) }}</span>
@@ -162,73 +196,20 @@ function priorytetLabel(p: string) {
             </li>
           </ul>
         </section>
-        <section v-if="doing.length" class="section">
-          <h3 class="section-title">W trakcie</h3>
-          <ul class="cards">
-            <li v-for="h in doing" :key="h.id" class="card">
-              <div class="card-body">
-                <div class="card-meta">
-                  <span class="badge" :class="'priorytet-' + h.priorytet">{{ priorytetLabel(h.priorytet) }}</span>
-                  <span class="date">{{ formatDate(h.dataUtworzenia) }}</span>
-                </div>
-                <h4 class="card-title">{{ h.nazwa }}</h4>
-                <p v-if="h.opis" class="card-desc">{{ h.opis }}</p>
-              </div>
-              <div class="card-actions">
-                <button class="btn btn-icon" title="Edytuj" @click="openEdit(h)">✎</button>
-                <button class="btn btn-icon btn-danger" title="Usuń" @click="remove(h)">✕</button>
-              </div>
-            </li>
-          </ul>
-        </section>
-        <section v-if="done.length" class="section">
-          <h3 class="section-title">Zamknięte</h3>
-          <ul class="cards">
-            <li v-for="h in done" :key="h.id" class="card">
-              <div class="card-body">
-                <div class="card-meta">
-                  <span class="badge" :class="'priorytet-' + h.priorytet">{{ priorytetLabel(h.priorytet) }}</span>
-                  <span class="date">{{ formatDate(h.dataUtworzenia) }}</span>
-                </div>
-                <h4 class="card-title">{{ h.nazwa }}</h4>
-                <p v-if="h.opis" class="card-desc">{{ h.opis }}</p>
-              </div>
-              <div class="card-actions">
-                <button class="btn btn-icon" title="Edytuj" @click="openEdit(h)">✎</button>
-                <button class="btn btn-icon btn-danger" title="Usuń" @click="remove(h)">✕</button>
-              </div>
-            </li>
-          </ul>
-        </section>
-      </template>
-      <section v-else class="section">
-        <ul class="cards">
-          <li v-for="h in filteredHistoryjki" :key="h.id" class="card">
-            <div class="card-body">
-              <div class="card-meta">
-                <span class="badge" :class="'priorytet-' + h.priorytet">{{ priorytetLabel(h.priorytet) }}</span>
-                <span class="date">{{ formatDate(h.dataUtworzenia) }}</span>
-              </div>
-              <h4 class="card-title">{{ h.nazwa }}</h4>
-              <p v-if="h.opis" class="card-desc">{{ h.opis }}</p>
-            </div>
-            <div class="card-actions">
-              <button class="btn btn-icon" title="Edytuj" @click="openEdit(h)">✎</button>
-              <button class="btn btn-icon btn-danger" title="Usuń" @click="remove(h)">✕</button>
-            </div>
-          </li>
-        </ul>
-      </section>
-    </div>
+      </div>
 
-    <HistoryjkaForm
-      v-model="showForm"
-      :historyjka="editingHistoryjka"
-      @submit="handleSubmit"
-    />
+      <HistoryjkaForm
+        v-model="showForm"
+        :historyjka="editingHistoryjka"
+        @submit="handleSubmit"
+      />
+    </section>
+
+    <div v-if="projectId" class="workspace-divider" role="separator" />
 
     <TasksBoard
       v-if="projectId"
+      class="workspace-tasks"
       :project-id="projectId"
       :historyjki="historyjki"
       @refresh-historyjki="loadHistoryjki"
@@ -237,10 +218,23 @@ function priorytetLabel(p: string) {
 </template>
 
 <style scoped>
-.historyjki-list {
-  max-width: 900px;
+.project-workspace {
+  max-width: 980px;
   margin: 0 auto;
   padding: 24px;
+}
+
+.workspace-section {
+  margin-bottom: 0;
+}
+
+.workspace-divider {
+  margin: 2rem 0;
+  border-top: 1px solid var(--border);
+}
+
+.workspace-tasks {
+  margin-top: 0;
 }
 
 .header {
@@ -286,9 +280,36 @@ function priorytetLabel(p: string) {
 }
 
 .section-title {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
   margin: 0 0 12px;
   font-size: 16px;
   color: var(--text);
+}
+
+.section-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.375rem;
+  height: 1.375rem;
+  padding: 0 0.35rem;
+  border-radius: 999px;
+  background: var(--accent-bg);
+  color: var(--accent);
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.section-empty {
+  margin: 0;
+  padding: 1rem;
+  border: 1px dashed var(--border);
+  border-radius: 0.625rem;
+  color: var(--text);
+  font-size: 0.875rem;
+  text-align: center;
 }
 
 .cards {

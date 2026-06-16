@@ -4,22 +4,21 @@ import type { Project } from '../types/project'
 import { projectsApi } from '../api/projectsApi'
 import ProjectForm from './ProjectForm.vue'
 import { notifyProjectCreated } from '../services/appNotifications'
+import { useProjects } from '../composables/useProjects'
 
-const projects = ref<Project[]>([])
+const { projects, loadProjects } = useProjects()
 const loading = ref(true)
 const showForm = ref(false)
 const editingProject = ref<Project | null>(null)
 
-onMounted(loadProjects)
-
-async function loadProjects() {
+onMounted(async () => {
   loading.value = true
   try {
-    projects.value = await projectsApi.getAll()
+    await loadProjects()
   } finally {
     loading.value = false
   }
-}
+})
 
 function openCreate() {
   editingProject.value = null

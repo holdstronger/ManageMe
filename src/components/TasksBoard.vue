@@ -179,6 +179,30 @@ function userLabel(userId: string | null) {
   const user = userMap.value.get(userId)
   return user ? `${user.imię} ${user.nazwisko} (${user.rola})` : 'Nieznany użytkownik'
 }
+
+const kanbanColumns = computed(() => [
+  {
+    key: 'todo' as const,
+    title: 'Do zrobienia',
+    items: tasksByState.value.todo,
+    emptyText: 'Brak zadań do zrobienia.',
+    meta: (task: Task) => storyMap.value.get(task.historyjkaId)?.nazwa ?? 'Brak historyjki',
+  },
+  {
+    key: 'doing' as const,
+    title: 'W trakcie',
+    items: tasksByState.value.doing,
+    emptyText: 'Brak zadań w trakcie realizacji.',
+    meta: (task: Task) => userLabel(task.odpowiedzialnyUżytkownikId),
+  },
+  {
+    key: 'done' as const,
+    title: 'Zakończone',
+    items: tasksByState.value.done,
+    emptyText: 'Brak zakończonych zadań.',
+    meta: (task: Task) => formatDate(task.dataZakończenia),
+  },
+])
 </script>
 
 <template>
@@ -196,32 +220,23 @@ function userLabel(userId: string | null) {
     <p v-else-if="loading" class="empty">Ładowanie zadań...</p>
 
     <div v-else class="kanban">
-      <div class="column">
-        <h3>Todo</h3>
-        <ul>
-          <li v-for="task in tasksByState.todo" :key="task.id" class="card" @click="openDetails(task)">
+      <div v-for="column in kanbanColumns" :key="column.key" class="column">
+        <h3 class="column-title">
+          {{ column.title }}
+          <span class="column-count">{{ column.items.length }}</span>
+        </h3>
+        <ul v-if="column.items.length">
+          <li
+            v-for="task in column.items"
+            :key="task.id"
+            class="card"
+            @click="openDetails(task)"
+          >
             <strong>{{ task.nazwa }}</strong>
-            <p>{{ storyMap.get(task.historyjkaId)?.nazwa ?? 'Brak historyjki' }}</p>
+            <p>{{ column.meta(task) }}</p>
           </li>
         </ul>
-      </div>
-      <div class="column">
-        <h3>Doing</h3>
-        <ul>
-          <li v-for="task in tasksByState.doing" :key="task.id" class="card" @click="openDetails(task)">
-            <strong>{{ task.nazwa }}</strong>
-            <p>{{ userLabel(task.odpowiedzialnyUżytkownikId) }}</p>
-          </li>
-        </ul>
-      </div>
-      <div class="column">
-        <h3>Done</h3>
-        <ul>
-          <li v-for="task in tasksByState.done" :key="task.id" class="card" @click="openDetails(task)">
-            <strong>{{ task.nazwa }}</strong>
-            <p>{{ formatDate(task.dataZakończenia) }}</p>
-          </li>
-        </ul>
+        <p v-else class="column-empty">{{ column.emptyText }}</p>
       </div>
     </div>
 
@@ -274,7 +289,7 @@ function userLabel(userId: string | null) {
                 :disabled="selectedTask.stan === 'done' || !selectedTask.odpowiedzialnyUżytkownikId"
                 @click="markDone"
               >
-                Oznacz jako done
+                Oznacz jako zakończone
               </button>
             </div>
             <div class="actions-row">
@@ -289,13 +304,35 @@ function userLabel(userId: string | null) {
 </template>
 
 <style scoped>
-.tasks { max-width: 980px; margin: 24px auto 0; padding: 0 24px 24px; }
+.tasks { max-width: none; margin: 0; padding: 0; }
 .tasks-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
 .empty { text-align: left; color: var(--text); }
 .kanban { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
-.column { border: 1px solid var(--border); border-radius: 10px; background: var(--code-bg); padding: 12px; text-align: left; min-height: 200px; }
-.column h3 { margin: 0 0 8px; font-size: 16px; color: var(--text-h); }
+.column { border: 1px solid var(--border); border-radius: 10px; background: var(--code-bg); padding: 12px; text-align: left; min-height: 220px; }
+.column-title { display: flex; align-items: center; gap: 0.5rem; margin: 0 0 8px; font-size: 16px; color: var(--text-h); }
+.column-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.375rem;
+  height: 1.375rem;
+  padding: 0 0.35rem;
+  border-radius: 999px;
+  background: var(--accent-bg);
+  color: var(--accent);
+  font-size: 0.75rem;
+  font-weight: 700;
+}
 .column ul { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 8px; }
+.column-empty {
+  margin: 0;
+  padding: 1.25rem 0.75rem;
+  border: 1px dashed var(--border);
+  border-radius: 0.5rem;
+  color: var(--text);
+  font-size: 0.8125rem;
+  text-align: center;
+}
 .card { border: 1px solid var(--border); border-radius: 8px; padding: 10px; background: var(--bg); cursor: pointer; }
 .card strong { display: block; color: var(--text-h); font-size: 14px; margin-bottom: 4px; }
 .card p { font-size: 12px; color: var(--text); }
