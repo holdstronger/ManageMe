@@ -4,7 +4,6 @@ import { notificationsApi } from '../api/notificationsApi'
 import { currentUserService } from './currentUserService'
 
 const allNotifications = shallowRef<Notification[]>([])
-/** Kolejka okien dla bieżącego użytkownika (priority medium | high). */
 const immediateDialogQueue = shallowRef<Notification[]>([])
 
 async function syncFromStorage(): Promise<void> {

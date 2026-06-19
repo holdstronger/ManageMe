@@ -7,10 +7,7 @@ const MOCK_USER: User = {
   rola: 'admin',
 }
 
-/**
- * Serwis zarządzający zalogowanym użytkownikiem.
- * Na ten moment: mock użytkownika (bez logowania, rejestracji).
- */
+
 class CurrentUserService {
   private _user: User = MOCK_USER
 
